@@ -67,34 +67,34 @@ type undoEntry struct {
 	utxosCreated   []wire.OutPoint
 }
 
-// memWallet is a simple in-memory wallet whose purpose is to provide basic
-// wallet functionality to the harness. The wallet uses a hard-coded HD key
+// memWallet is a simple in-memory Wallet whose purpose is to provide basic
+// Wallet functionality to the harness. The Wallet uses a hard-coded HD key
 // hierarchy which promotes reproducibility between harness test runs.
 type memWallet struct {
 	coinbaseKey  *btcec.PrivateKey
 	coinbaseAddr btcutil.Address
 
-	// hdRoot is the root master private key for the wallet.
+	// hdRoot is the root master private key for the Wallet.
 	hdRoot *hdkeychain.ExtendedKey
 
 	// hdIndex is the next available key index offset from the hdRoot.
 	hdIndex uint32
 
-	// currentHeight is the latest height the wallet is known to be synced
+	// currentHeight is the latest height the Wallet is known to be synced
 	// to.
 	currentHeight int32
 
-	// addrs tracks all addresses belonging to the wallet. The addresses
+	// addrs tracks all addresses belonging to the Wallet. The addresses
 	// are indexed by their keypath from the hdRoot.
 	addrs map[uint32]btcutil.Address
 
-	// utxos is the set of utxos spendable by the wallet.
+	// utxos is the set of utxos spendable by the Wallet.
 	utxos map[wire.OutPoint]*utxo
 
 	// reorgJournal is a map storing an undo entry for each new block
 	// received. Once a block is disconnected, the undo entry for the
 	// particular height is evaluated, thereby rewinding the effect of the
-	// disconnected block on the wallet's set of spendable utxos.
+	// disconnected block on the Wallet's set of spendable utxos.
 	reorgJournal map[int32]*undoEntry
 
 	chainUpdates      []*chainUpdate
@@ -111,7 +111,7 @@ type memWallet struct {
 // newMemWallet creates and returns a fully initialized instance of the
 // memWallet given a particular blockchain's parameters.
 func newMemWallet(net *chaincfg.Params, harnessID uint32) (*memWallet, error) {
-	// The wallet's final HD seed is: hdSeed || harnessID. This method
+	// The Wallet's final HD seed is: hdSeed || harnessID. This method
 	// ensures that each harness instance uses a deterministic root seed
 	// based on its harness ID.
 	var harnessHDSeed [chainhash.HashSize + 4]byte
@@ -157,12 +157,12 @@ func newMemWallet(net *chaincfg.Params, harnessID uint32) (*memWallet, error) {
 	}, nil
 }
 
-// Start launches all goroutines required for the wallet to function properly.
+// Start launches all goroutines required for the Wallet to function properly.
 func (m *memWallet) Start() {
 	go m.chainSyncer()
 }
 
-// SyncedHeight returns the height the wallet is known to be synced to.
+// SyncedHeight returns the height the Wallet is known to be synced to.
 //
 // This function is safe for concurrent access.
 func (m *memWallet) SyncedHeight() int32 {
@@ -171,7 +171,7 @@ func (m *memWallet) SyncedHeight() int32 {
 	return m.currentHeight
 }
 
-// SetRPCClient saves the passed rpc connection to btcd as the wallet's
+// SetRPCClient saves the passed rpc connection to btcd as the Wallet's
 // personal rpc connection.
 func (m *memWallet) SetRPCClient(rpcClient *rpcclient.Client) {
 	m.rpc = rpcClient
@@ -196,12 +196,12 @@ func (m *memWallet) IngestBlock(height int32, header *wire.BlockHeader, filtered
 	}()
 }
 
-// ingestBlock updates the wallet's internal utxo state based on the outputs
+// ingestBlock updates the Wallet's internal utxo state based on the outputs
 // created and destroyed within each block.
 func (m *memWallet) ingestBlock(update *chainUpdate) {
 	// Update the latest synced height, then process each filtered
 	// transaction in the block creating and destroying utxos within
-	// the wallet as a result.
+	// the Wallet as a result.
 	m.currentHeight = update.blockHeight
 	undo := &undoEntry{
 		utxosDestroyed: make(map[wire.OutPoint]*utxo),
@@ -221,7 +221,7 @@ func (m *memWallet) ingestBlock(update *chainUpdate) {
 }
 
 // chainSyncer is a goroutine dedicated to processing new blocks in order to
-// keep the wallet's utxo state up to date.
+// keep the Wallet's utxo state up to date.
 //
 // NOTE: This MUST be run as a goroutine.
 func (m *memWallet) chainSyncer() {
@@ -247,7 +247,7 @@ func (m *memWallet) chainSyncer() {
 }
 
 // evalOutputs evaluates each of the passed outputs, creating a new matching
-// utxo within the wallet if we're able to spend the output.
+// utxo within the Wallet if we're able to spend the output.
 func (m *memWallet) evalOutputs(outputs []*wire.TxOut, txHash *chainhash.Hash,
 	isCoinbase bool, undo *undoEntry) {
 
@@ -283,7 +283,7 @@ func (m *memWallet) evalOutputs(outputs []*wire.TxOut, txHash *chainhash.Hash,
 }
 
 // evalInputs scans all the passed inputs, destroying any utxos within the
-// wallet which are spent by an input.
+// Wallet which are spent by an input.
 func (m *memWallet) evalInputs(inputs []*wire.TxIn, undo *undoEntry) {
 	for _, txIn := range inputs {
 		op := txIn.PreviousOutPoint
@@ -316,7 +316,7 @@ func (m *memWallet) UnwindBlock(height int32, header *wire.BlockHeader) {
 	}()
 }
 
-// unwindBlock undoes the effect that a particular block had on the wallet's
+// unwindBlock undoes the effect that a particular block had on the Wallet's
 // internal utxo state.
 func (m *memWallet) unwindBlock(update *chainUpdate) {
 	undo := m.reorgJournal[update.blockHeight]
@@ -332,7 +332,7 @@ func (m *memWallet) unwindBlock(update *chainUpdate) {
 	delete(m.reorgJournal, update.blockHeight)
 }
 
-// newAddress returns a new address from the wallet's hd key chain.  It also
+// newAddress returns a new address from the Wallet's hd key chain.  It also
 // loads the address into the RPC client's transaction filter to ensure any
 // transactions that involve it are delivered via the notifications.
 func (m *memWallet) newAddress() (btcutil.Address, error) {
@@ -364,7 +364,7 @@ func (m *memWallet) newAddress() (btcutil.Address, error) {
 	return addr, nil
 }
 
-// NewAddress returns a fresh address spendable by the wallet.
+// NewAddress returns a fresh address spendable by the Wallet.
 //
 // This function is safe for concurrent access.
 func (m *memWallet) NewAddress() (btcutil.Address, error) {
@@ -562,7 +562,7 @@ func (m *memWallet) UnlockOutputs(inputs []*wire.TxIn) {
 	}
 }
 
-// ConfirmedBalance returns the confirmed balance of the wallet.
+// ConfirmedBalance returns the confirmed balance of the Wallet.
 //
 // This function is safe for concurrent access.
 func (m *memWallet) ConfirmedBalance() btcutil.Amount {
@@ -572,7 +572,7 @@ func (m *memWallet) ConfirmedBalance() btcutil.Amount {
 	var balance btcutil.Amount
 	for _, utxo := range m.utxos {
 		// Prevent any immature or locked outputs from contributing to
-		// the wallet's total confirmed balance.
+		// the Wallet's total confirmed balance.
 		if !utxo.isMature(m.currentHeight) || utxo.isLocked {
 			continue
 		}

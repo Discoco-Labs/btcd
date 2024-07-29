@@ -23,7 +23,7 @@ import (
 
 func testSendOutputs(r *Harness, t *testing.T) {
 	genSpend := func(amt btcutil.Amount) *chainhash.Hash {
-		// Grab a fresh address from the wallet.
+		// Grab a fresh address from the Wallet.
 		addr, err := r.NewAddress()
 		if err != nil {
 			t.Fatalf("unable to get new address: %v", err)
@@ -66,7 +66,7 @@ func testSendOutputs(r *Harness, t *testing.T) {
 	// input.
 	txid := genSpend(btcutil.Amount(5 * btcutil.SatoshiPerBitcoin))
 
-	// Generate a single block, the transaction the wallet created should
+	// Generate a single block, the transaction the Wallet created should
 	// be found in this block.
 	blockHashes, err := r.Client.Generate(1)
 	if err != nil {
@@ -90,7 +90,7 @@ func assertConnectedTo(t *testing.T, nodeA *Harness, nodeB *Harness) {
 		t.Fatalf("unable to get nodeA's peer info")
 	}
 
-	nodeAddr := nodeB.node.config.listen
+	nodeAddr := nodeB.Node.config.listen
 	addrFound := false
 	for _, peerInfo := range nodeAPeers {
 		if peerInfo.Addr == nodeAddr {
@@ -196,7 +196,7 @@ func testJoinMempools(r *Harness, t *testing.T) {
 	// Both mempools should be considered synced as they are empty.
 	// Therefore, this should return instantly.
 	if err := JoinNodes(nodeSlice, Mempools); err != nil {
-		t.Fatalf("unable to join node on mempools: %v", err)
+		t.Fatalf("unable to join Node on mempools: %v", err)
 	}
 
 	// Generate a coinbase spend to a new address within the main harness'
@@ -234,7 +234,7 @@ func testJoinMempools(r *Harness, t *testing.T) {
 	select {
 	case <-harnessSynced:
 	case <-time.After(time.Minute):
-		t.Fatalf("harness node never received transaction")
+		t.Fatalf("harness Node never received transaction")
 	}
 
 	// This select case should fall through to the default as the goroutine
@@ -242,7 +242,7 @@ func testJoinMempools(r *Harness, t *testing.T) {
 	poolsSynced := make(chan struct{})
 	go func() {
 		if err := JoinNodes(nodeSlice, Mempools); err != nil {
-			t.Fatalf("unable to join node on mempools: %v", err)
+			t.Fatalf("unable to join Node on mempools: %v", err)
 		}
 		poolsSynced <- struct{}{}
 	}()
@@ -258,7 +258,7 @@ func testJoinMempools(r *Harness, t *testing.T) {
 		t.Fatalf("unable to connect harnesses: %v", err)
 	}
 	if err := JoinNodes(nodeSlice, Blocks); err != nil {
-		t.Fatalf("unable to join node on blocks: %v", err)
+		t.Fatalf("unable to join Node on blocks: %v", err)
 	}
 
 	// Send the transaction to the local harness which will result in synced
@@ -295,7 +295,7 @@ func testJoinBlocks(r *Harness, t *testing.T) {
 	blocksSynced := make(chan struct{})
 	go func() {
 		if err := JoinNodes(nodeSlice, Blocks); err != nil {
-			t.Fatalf("unable to join node on blocks: %v", err)
+			t.Fatalf("unable to join Node on blocks: %v", err)
 		}
 		blocksSynced <- struct{}{}
 	}()
@@ -479,11 +479,11 @@ func testMemWalletReorg(r *Harness, t *testing.T) {
 	}
 	defer harness.TearDown()
 
-	// The internal wallet of this harness should now have 250 BTC.
+	// The internal Wallet of this harness should now have 250 BTC.
 	expectedBalance := btcutil.Amount(250 * btcutil.SatoshiPerBitcoin)
 	walletBalance := harness.ConfirmedBalance()
 	if expectedBalance != walletBalance {
-		t.Fatalf("wallet balance incorrect: expected %v, got %v",
+		t.Fatalf("Wallet balance incorrect: expected %v, got %v",
 			expectedBalance, walletBalance)
 	}
 
@@ -494,22 +494,22 @@ func testMemWalletReorg(r *Harness, t *testing.T) {
 	}
 	nodeSlice := []*Harness{r, harness}
 	if err := JoinNodes(nodeSlice, Blocks); err != nil {
-		t.Fatalf("unable to join node on blocks: %v", err)
+		t.Fatalf("unable to join Node on blocks: %v", err)
 	}
 
-	// The original wallet should now have a balance of 0 BTC as its entire
+	// The original Wallet should now have a balance of 0 BTC as its entire
 	// chain should have been decimated in favor of the main harness'
 	// chain.
 	expectedBalance = btcutil.Amount(0)
 	walletBalance = harness.ConfirmedBalance()
 	if expectedBalance != walletBalance {
-		t.Fatalf("wallet balance incorrect: expected %v, got %v",
+		t.Fatalf("Wallet balance incorrect: expected %v, got %v",
 			expectedBalance, walletBalance)
 	}
 }
 
 func testMemWalletLockedOutputs(r *Harness, t *testing.T) {
-	// Obtain the initial balance of the wallet at this point.
+	// Obtain the initial balance of the Wallet at this point.
 	startingBalance := r.ConfirmedBalance()
 
 	// First, create a signed transaction spending some outputs.
@@ -528,7 +528,7 @@ func testMemWalletLockedOutputs(r *Harness, t *testing.T) {
 		t.Fatalf("unable to create transaction: %v", err)
 	}
 
-	// The current wallet balance should now be at least 50 BTC less
+	// The current Wallet balance should now be at least 50 BTC less
 	// (accounting for fees) than the period balance
 	currentBalance := r.ConfirmedBalance()
 	if !(currentBalance <= startingBalance-outputAmt) {
@@ -573,7 +573,7 @@ func TestMain(m *testing.M) {
 		os.Exit(1)
 	}
 
-	// Initialize the main mining node with a chain of length 125,
+	// Initialize the main mining Node with a chain of length 125,
 	// providing 25 mature coinbases to allow spending from for testing
 	// purposes.
 	if err = mainHarness.SetUp(true, numMatureOutputs); err != nil {
@@ -607,7 +607,7 @@ func TestHarness(t *testing.T) {
 	expectedBalance := btcutil.Amount(numMatureOutputs * 50 * btcutil.SatoshiPerBitcoin)
 	harnessBalance := mainHarness.ConfirmedBalance()
 	if harnessBalance != expectedBalance {
-		t.Fatalf("expected wallet balance of %v instead have %v",
+		t.Fatalf("expected Wallet balance of %v instead have %v",
 			expectedBalance, harnessBalance)
 	}
 
@@ -615,7 +615,7 @@ func TestHarness(t *testing.T) {
 	// required number of blocks for coinbase maturity.
 	nodeInfo, err := mainHarness.Client.GetInfo()
 	if err != nil {
-		t.Fatalf("unable to execute getinfo on node: %v", err)
+		t.Fatalf("unable to execute getinfo on Node: %v", err)
 	}
 	expectedChainHeight := numMatureOutputs + uint32(mainHarness.ActiveNet.CoinbaseMaturity)
 	if uint32(nodeInfo.Blocks) != expectedChainHeight {

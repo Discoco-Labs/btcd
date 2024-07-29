@@ -233,7 +233,7 @@ func (n *node) cleanup() error {
 		}
 	}
 
-	// Since the node's main data directory is passed in to the node config,
+	// Since the Node's main data directory is passed in to the Node config,
 	// it isn't our responsibility to clean it up. So we're done after
 	// removing the pid file.
 	return nil

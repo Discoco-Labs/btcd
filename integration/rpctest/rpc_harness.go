@@ -36,7 +36,7 @@ const (
 	BlockVersion = 4
 
 	// DefaultMaxConnectionRetries is the default number of times we re-try
-	// to connect to the node after starting it.
+	// to connect to the Node after starting it.
 	DefaultMaxConnectionRetries = 20
 
 	// DefaultConnectionRetryTimeout is the default duration we wait between
@@ -84,20 +84,20 @@ type HarnessTestCase func(r *Harness, t *testing.T)
 
 // Harness fully encapsulates an active btcd process to provide a unified
 // platform for creating rpc driven integration tests involving btcd. The
-// active btcd node will typically be run in simnet mode in order to allow for
+// active btcd Node will typically be run in simnet mode in order to allow for
 // easy generation of test blockchains.  The active btcd process is fully
 // managed by Harness, which handles the necessary initialization, and teardown
 // of the process along with any temporary directories created as a result.
 // Multiple Harness instances may be run concurrently, in order to allow for
 // testing complex scenarios involving multiple nodes. The harness also
-// includes an in-memory wallet to streamline various classes of tests.
+// includes an in-memory Wallet to streamline various classes of tests.
 type Harness struct {
 	// ActiveNet is the parameters of the blockchain the Harness belongs
 	// to.
 	ActiveNet *chaincfg.Params
 
 	// MaxConnRetries is the maximum number of times we re-try to connect to
-	// the node after starting it.
+	// the Node after starting it.
 	MaxConnRetries int
 
 	// ConnectionRetryTimeout is the duration we wait between two connection
@@ -106,10 +106,10 @@ type Harness struct {
 
 	Client      *rpcclient.Client
 	BatchClient *rpcclient.Client
-	node        *node
+	Node        *node
 	handlers    *rpcclient.NotificationHandlers
 
-	wallet *memWallet
+	Wallet *memWallet
 
 	testNodeDir string
 	nodeNum     int
@@ -121,7 +121,7 @@ type Harness struct {
 // Optionally, websocket handlers and a specified configuration may be passed.
 // In the case that a nil config is passed, a default configuration will be
 // used. If a custom btcd executable is specified, it will be used to start the
-// harness node. Otherwise a new binary is built on demand.
+// harness Node. Otherwise a new binary is built on demand.
 //
 // NOTE: This function is safe for concurrent access.
 func New(activeNet *chaincfg.Params, handlers *rpcclient.NotificationHandlers,
@@ -151,7 +151,7 @@ func New(activeNet *chaincfg.Params, handlers *rpcclient.NotificationHandlers,
 		return nil, err
 	}
 
-	nodeTestData, err := os.MkdirTemp(testDir, "rpc-node")
+	nodeTestData, err := os.MkdirTemp(testDir, "rpc-Node")
 	if err != nil {
 		return nil, err
 	}
@@ -180,7 +180,7 @@ func New(activeNet *chaincfg.Params, handlers *rpcclient.NotificationHandlers,
 	// Generate p2p+rpc listening addresses.
 	config.listen, config.rpcListen = ListenAddressGenerator()
 
-	// Create the testing node bounded to the simnet.
+	// Create the testing Node bounded to the simnet.
 	node, err := newNode(config, nodeTestData)
 	if err != nil {
 		return nil, err
@@ -195,7 +195,7 @@ func New(activeNet *chaincfg.Params, handlers *rpcclient.NotificationHandlers,
 
 	// If a handler for the OnFilteredBlock{Connected,Disconnected} callback
 	// callback has already been set, then create a wrapper callback which
-	// executes both the currently registered callback and the mem wallet's
+	// executes both the currently registered callback and the mem Wallet's
 	// callback.
 	if handlers.OnFilteredBlockConnected != nil {
 		obc := handlers.OnFilteredBlockConnected
@@ -219,13 +219,13 @@ func New(activeNet *chaincfg.Params, handlers *rpcclient.NotificationHandlers,
 
 	h := &Harness{
 		handlers:               handlers,
-		node:                   node,
+		Node:                   node,
 		MaxConnRetries:         DefaultMaxConnectionRetries,
 		ConnectionRetryTimeout: DefaultConnectionRetryTimeout,
 		testNodeDir:            nodeTestData,
 		ActiveNet:              activeNet,
 		nodeNum:                nodeNum,
-		wallet:                 wallet,
+		Wallet:                 wallet,
 	}
 
 	// Track this newly created test instance within the package level
@@ -236,27 +236,27 @@ func New(activeNet *chaincfg.Params, handlers *rpcclient.NotificationHandlers,
 }
 
 // SetUp initializes the rpc test state. Initialization includes: starting up a
-// simnet node, creating a websockets client and connecting to the started
-// node, and finally: optionally generating and submitting a testchain with a
+// simnet Node, creating a websockets client and connecting to the started
+// Node, and finally: optionally generating and submitting a testchain with a
 // configurable number of mature coinbase outputs coinbase outputs.
 //
 // NOTE: This method and TearDown should always be called from the same
 // goroutine as they are not concurrent safe.
 func (h *Harness) SetUp(createTestChain bool, numMatureOutputs uint32) error {
-	// Start the btcd node itself. This spawns a new process which will be
+	// Start the btcd Node itself. This spawns a new process which will be
 	// managed
-	if err := h.node.start(); err != nil {
-		return fmt.Errorf("error starting node: %w", err)
+	if err := h.Node.start(); err != nil {
+		return fmt.Errorf("error starting Node: %w", err)
 	}
 	if err := h.connectRPCClient(); err != nil {
 		return fmt.Errorf("error connecting RPC client: %w", err)
 	}
 
-	h.wallet.Start()
+	h.Wallet.Start()
 
 	// Filter transactions that pay to the coinbase associated with the
-	// wallet.
-	filterAddrs := []btcutil.Address{h.wallet.coinbaseAddr}
+	// Wallet.
+	filterAddrs := []btcutil.Address{h.Wallet.coinbaseAddr}
 	if err := h.Client.LoadTxFilter(true, filterAddrs, nil); err != nil {
 		return err
 	}
@@ -278,7 +278,7 @@ func (h *Harness) SetUp(createTestChain bool, numMatureOutputs uint32) error {
 		}
 	}
 
-	// Block until the wallet has fully synced up to the tip of the main
+	// Block until the Wallet has fully synced up to the tip of the main
 	// chain.
 	_, height, err := h.Client.GetBestBlock()
 	if err != nil {
@@ -286,7 +286,7 @@ func (h *Harness) SetUp(createTestChain bool, numMatureOutputs uint32) error {
 	}
 	ticker := time.NewTicker(time.Millisecond * 100)
 	for range ticker.C {
-		walletHeight := h.wallet.SyncedHeight()
+		walletHeight := h.Wallet.SyncedHeight()
 		if walletHeight == height {
 			break
 		}
@@ -309,7 +309,7 @@ func (h *Harness) tearDown() error {
 		h.BatchClient.Shutdown()
 	}
 
-	if err := h.node.shutdown(); err != nil {
+	if err := h.Node.shutdown(); err != nil {
 		return err
 	}
 
@@ -344,8 +344,8 @@ func (h *Harness) connectRPCClient() error {
 	var client, batchClient *rpcclient.Client
 	var err error
 
-	rpcConf := h.node.config.rpcConnConfig()
-	batchConf := h.node.config.rpcConnConfig()
+	rpcConf := h.Node.config.rpcConnConfig()
+	batchConf := h.Node.config.rpcConnConfig()
 	batchConf.HTTPPostMode = true
 	for i := 0; i < h.MaxConnRetries; i++ {
 		fail := false
@@ -376,25 +376,25 @@ func (h *Harness) connectRPCClient() error {
 	}
 
 	h.Client = client
-	h.wallet.SetRPCClient(client)
+	h.Wallet.SetRPCClient(client)
 	h.BatchClient = batchClient
 	return nil
 }
 
 // NewAddress returns a fresh address spendable by the Harness' internal
-// wallet.
+// Wallet.
 //
 // This function is safe for concurrent access.
 func (h *Harness) NewAddress() (btcutil.Address, error) {
-	return h.wallet.NewAddress()
+	return h.Wallet.NewAddress()
 }
 
 // ConfirmedBalance returns the confirmed balance of the Harness' internal
-// wallet.
+// Wallet.
 //
 // This function is safe for concurrent access.
 func (h *Harness) ConfirmedBalance() btcutil.Amount {
-	return h.wallet.ConfirmedBalance()
+	return h.Wallet.ConfirmedBalance()
 }
 
 // SendOutputs creates, signs, and finally broadcasts a transaction spending
@@ -405,7 +405,7 @@ func (h *Harness) ConfirmedBalance() btcutil.Amount {
 func (h *Harness) SendOutputs(targetOutputs []*wire.TxOut,
 	feeRate btcutil.Amount) (*chainhash.Hash, error) {
 
-	return h.wallet.SendOutputs(targetOutputs, feeRate)
+	return h.Wallet.SendOutputs(targetOutputs, feeRate)
 }
 
 // SendOutputsWithoutChange creates and sends a transaction that pays to the
@@ -416,7 +416,7 @@ func (h *Harness) SendOutputs(targetOutputs []*wire.TxOut,
 func (h *Harness) SendOutputsWithoutChange(targetOutputs []*wire.TxOut,
 	feeRate btcutil.Amount) (*chainhash.Hash, error) {
 
-	return h.wallet.SendOutputsWithoutChange(targetOutputs, feeRate)
+	return h.Wallet.SendOutputsWithoutChange(targetOutputs, feeRate)
 }
 
 // CreateTransaction returns a fully signed transaction paying to the specified
@@ -433,7 +433,7 @@ func (h *Harness) SendOutputsWithoutChange(targetOutputs []*wire.TxOut,
 func (h *Harness) CreateTransaction(targetOutputs []*wire.TxOut,
 	feeRate btcutil.Amount, change bool) (*wire.MsgTx, error) {
 
-	return h.wallet.CreateTransaction(targetOutputs, feeRate, change)
+	return h.Wallet.CreateTransaction(targetOutputs, feeRate, change)
 }
 
 // UnlockOutputs unlocks any outputs which were previously marked as
@@ -442,25 +442,25 @@ func (h *Harness) CreateTransaction(targetOutputs []*wire.TxOut,
 //
 // This function is safe for concurrent access.
 func (h *Harness) UnlockOutputs(inputs []*wire.TxIn) {
-	h.wallet.UnlockOutputs(inputs)
+	h.Wallet.UnlockOutputs(inputs)
 }
 
 // RPCConfig returns the harnesses current rpc configuration. This allows other
 // potential RPC clients created within tests to connect to a given test
 // harness instance.
 func (h *Harness) RPCConfig() rpcclient.ConnConfig {
-	return h.node.config.rpcConnConfig()
+	return h.Node.config.rpcConnConfig()
 }
 
 // P2PAddress returns the harness' P2P listening address. This allows potential
 // peers (such as SPV peers) created within tests to connect to a given test
 // harness instance.
 func (h *Harness) P2PAddress() string {
-	return h.node.config.listen
+	return h.Node.config.listen
 }
 
 // GenerateAndSubmitBlock creates a block whose contents include the passed
-// transactions and submits it to the running simnet node. For generating
+// transactions and submits it to the running simnet Node. For generating
 // blocks with only a coinbase tx, callers can simply pass nil instead of
 // transactions to be mined. Additionally, a custom block version can be set by
 // the caller. A blockVersion of -1 indicates that the current default block
@@ -476,7 +476,7 @@ func (h *Harness) GenerateAndSubmitBlock(txns []*btcutil.Tx, blockVersion int32,
 
 // GenerateAndSubmitBlockWithCustomCoinbaseOutputs creates a block whose
 // contents include the passed coinbase outputs and transactions and submits
-// it to the running simnet node. For generating blocks with only a coinbase tx,
+// it to the running simnet Node. For generating blocks with only a coinbase tx,
 // callers can simply pass nil instead of transactions to be mined.
 // Additionally, a custom block version can be set by the caller. A blockVersion
 // of -1 indicates that the current default block version should be used. An
@@ -484,7 +484,7 @@ func (h *Harness) GenerateAndSubmitBlock(txns []*btcutil.Tx, blockVersion int32,
 // doesn't wish to set a custom time. The mineTo list of outputs will be added
 // to the coinbase; this is not checked for correctness until the block is
 // submitted; thus, it is the caller's responsibility to ensure that the outputs
-// are correct. If the list is empty, the coinbase reward goes to the wallet
+// are correct. If the list is empty, the coinbase reward goes to the Wallet
 // managed by the Harness.
 //
 // This function is safe for concurrent access.
@@ -512,12 +512,12 @@ func (h *Harness) GenerateAndSubmitBlockWithCustomCoinbaseOutputs(
 
 	// Create a new block including the specified transactions
 	newBlock, err := CreateBlock(prevBlock, txns, blockVersion,
-		blockTime, h.wallet.coinbaseAddr, mineTo, h.ActiveNet)
+		blockTime, h.Wallet.coinbaseAddr, mineTo, h.ActiveNet)
 	if err != nil {
 		return nil, err
 	}
 
-	// Submit the block to the simnet node.
+	// Submit the block to the simnet Node.
 	if err := h.Client.SubmitBlock(newBlock, nil); err != nil {
 		return nil, err
 	}
@@ -534,7 +534,7 @@ func generateListeningAddresses() (string, string) {
 }
 
 // NextAvailablePort returns the first port that is available for listening by
-// a new node. It panics if no port is found and the maximum available TCP port
+// a new Node. It panics if no port is found and the maximum available TCP port
 // is reached.
 func NextAvailablePort() int {
 	port := atomic.AddUint32(&lastPort, 1)
@@ -543,7 +543,7 @@ func NextAvailablePort() int {
 		// port, close the socket and return it as available. While it
 		// could be the case that some other process picks up this port
 		// between the time the socket is closed and it's reopened in
-		// the harness node, in practice in CI servers this seems much
+		// the harness Node, in practice in CI servers this seems much
 		// less likely than simply some other process already being
 		// bound at the start of the tests.
 		addr := fmt.Sprintf(ListenerFormat, port)
@@ -562,7 +562,7 @@ func NextAvailablePort() int {
 }
 
 // NextAvailablePortForProcess returns the first port that is available for
-// listening by a new node, using a lock file to make sure concurrent access for
+// listening by a new Node, using a lock file to make sure concurrent access for
 // parallel tasks within the same process don't re-use the same port. It panics
 // if no port is found and the maximum available TCP port is reached.
 func NextAvailablePortForProcess(pid int) int {
@@ -570,10 +570,10 @@ func NextAvailablePortForProcess(pid int) int {
 		os.TempDir(), fmt.Sprintf("rpctest-port-pid-%d.lock", pid),
 	)
 	timeout := time.After(time.Second)
-	
+
 	var (
 		lockFileHandle *os.File
-		err error
+		err            error
 	)
 	for {
 		// Attempt to acquire the lock file. If it already exists, wait
@@ -628,7 +628,7 @@ func NextAvailablePortForProcess(pid int) int {
 		// port, close the socket and return it as available. While it
 		// could be the case that some other process picks up this port
 		// between the time the socket is closed and it's reopened in
-		// the harness node, in practice in CI servers this seems much
+		// the harness Node, in practice in CI servers this seems much
 		// less likely than simply some other process already being
 		// bound at the start of the tests.
 		addr := fmt.Sprintf(ListenerFormat, lastPort)

@@ -12,7 +12,7 @@ import (
 	"github.com/btcsuite/btcd/rpcclient"
 )
 
-// JoinType is an enum representing a particular type of "node join". A node
+// JoinType is an enum representing a particular type of "Node join". A Node
 // join is a synchronization tool used to wait until a subset of nodes have a
 // consistent state with respect to an attribute.
 type JoinType uint8
@@ -55,7 +55,7 @@ retry:
 		}
 
 		// If all nodes have an identical mempool with respect to the
-		// first node, then we're done. Otherwise, drop back to the top
+		// first Node, then we're done. Otherwise, drop back to the top
 		// of the loop and retry after a short wait period.
 		for _, node := range nodes[1:] {
 			nodePool, err := node.Client.GetRawMempool()
@@ -114,7 +114,7 @@ func ConnectNode(from *Harness, to *Harness) error {
 	}
 	numPeers := len(peerInfo)
 
-	targetAddr := to.node.config.listen
+	targetAddr := to.Node.config.listen
 	if err := from.Client.AddNode(targetAddr, rpcclient.ANAdd); err != nil {
 		return err
 	}
